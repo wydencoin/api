@@ -1,0 +1,53 @@
+openapi: 3.0.3
+info:
+  title: WydenCoin API
+  version: 0.1.0
+  description: >
+    Rascunho v0. Rotas de aluno exigem o token do Supabase Auth (Bearer).
+    Rotas /admin exigem perfil admin; /internal exigem o token interno do motor.
+servers:
+  - url: http://localhost:3000
+paths:
+  /health:
+    get: { summary: Verifica se a API está no ar, responses: { "200": { description: ok } } }
+  /alunos/me/saldo:
+    get:
+      summary: Saldo disponível e reservado do aluno logado
+      responses:
+        "200":
+          description: Saldo
+          content:
+            application/json:
+              schema: { type: object, properties: { disponivel: { type: integer }, reservado: { type: integer } } }
+  /alunos/me/extrato:
+    get: { summary: Emissões (com motivo) e resgates do aluno, responses: { "200": { description: Lista } } }
+  /alunos/me/carteira:
+    post: { summary: Cria a carteira custodial no primeiro login, responses: { "201": { description: Criada } } }
+  /beneficios:
+    get: { summary: Catálogo de benefícios ativos, responses: { "200": { description: Lista } } }
+  /resgates:
+    post:
+      summary: Resgata um benefício (bloqueia as moedas no RedemptionManager)
+      requestBody:
+        content: { application/json: { schema: { type: object, properties: { beneficioId: { type: integer } }, required: [beneficioId] } } }
+      responses: { "201": { description: Resgate com código de voucher }, "409": { description: Saldo ou estoque insuficiente } }
+  /resgates/{id}/cancelar:
+    post: { summary: Cancela e devolve as moedas, parameters: [{ name: id, in: path, required: true, schema: { type: integer } }], responses: { "200": { description: ok } } }
+  /resgates/confirmar:
+    post:
+      summary: Confirmador (cantina, financeiro, mentor) confirma o uso pelo código do voucher
+      requestBody:
+        content: { application/json: { schema: { type: object, properties: { codigoVoucher: { type: string } }, required: [codigoVoucher] } } }
+      responses: { "200": { description: Moedas queimadas }, "404": { description: Código inválido ou expirado } }
+  /admin/beneficios:
+    post: { summary: Cadastra benefício, responses: { "201": { description: Criado } } }
+  /admin/extracoes:
+    post: { summary: Envia a planilha de indicadores (multipart), responses: { "202": { description: Importada } } }
+  /admin/extracoes/{id}/aprovar:
+    post: { summary: Aprova as emissões calculadas de um ciclo, parameters: [{ name: id, in: path, required: true, schema: { type: integer } }], responses: { "200": { description: Aprovado } } }
+  /admin/acoes-esg/{id}/validar:
+    post: { summary: Valida participações em ação ESG, parameters: [{ name: id, in: path, required: true, schema: { type: integer } }], responses: { "200": { description: ok } } }
+  /internal/emissoes:
+    post:
+      summary: Motor envia emissões aprovadas; a API chama mintRewardBatch em lotes de 100
+      responses: { "202": { description: Enviadas }, "400": { description: Corpo inválido } }
